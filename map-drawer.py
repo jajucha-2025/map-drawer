@@ -1,6 +1,7 @@
 import math
 import numpy as np
 import cv2
+import os
 
 rslt_img_x = 250
 rslt_img_y = 250
@@ -22,20 +23,29 @@ def polar_to_cartesian(r, theta):
     y = r * math.sin(theta)
     return x, y
 
-# draw utils
-def draw_lidar(theta, d):
-    img = np.zeros((rslt_img_x, rslt_img_y, 3), dtype=np.uint8)
-    center_x = rslt_img_x // 2
-    center_y = rslt_img_y // 2
+# draw imgs
+def draw_lidar(theta, dist):
+    theta_rad = np.deg2rad(-theta)
 
-    for i in range(len(theta)):
-        x, y = polar_to_cartesian(d[i], theta[i])
-
-        px = int(center_x + x[i])
-        py = int(center_y - y[i])  # Invert y-axis for image coordinates
-        if 0 <= px < rslt_img_x and 0 <= py < rslt_img_y:
-            img = cv2.circle(img, (px, py), 1, lidar_color, -1)
+    x = dist * np.cos(theta_rad)
+    y = dist * np.sin(theta_rad)
     
+    img_size = 400
+    max_dist = 5000
+
+    scale = (img_size / 2) / max_dist
+
+    ix = (x * scale + img_size / 2).astype(np.int32)
+    iy = (y * scale + img_size / 2).astype(np.int32)
+
+    img = np.zeros((img_size, img_size, 3), dtype=np.uint8)
+
+    for nx, ny in zip(ix, iy):
+        if (ix >= 0) and (ix < img_size) and (iy >= 0) and (iy < img_size):
+            cv2.circle(img, (nx, ny), radius=2, color=lidar_color, thickness=-1)
+
+    img = cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
+
     return img
 
 def draw_canny(img):
@@ -72,11 +82,21 @@ def draw_canny(img):
 def draw_map(img, theta, d):
     lidar_img = draw_lidar(theta, d)
     cannyed_img = draw_canny(img)
+    cannyed_img = cv2.resize(cannyed_img, (cannyed_img.shape[1]/2, cannyed_img.shape[0]/2))
 
     roi = lidar_img[0:cannyed_img.shape[0], rslt_img_x//2 - cannyed_img.shape[1]//2:rslt_img_x//2 + cannyed_img.shape[1]//2]
     roi[np.where((cannyed_img != [0, 0, 0]).all(axis=2))] = cannyed_img[np.where((cannyed_img != [0, 0, 0]).all(axis=2))]
 
     lidar_img[0:cannyed_img.shape[0], rslt_img_x//2 - cannyed_img.shape[1]//2:rslt_img_x//2 + cannyed_img.shape[1]//2] = roi
-    rslt_img = lidar_img
+    full_img = lidar_img
     
+    rslt_img = full_img[0:300, 0:400]
+
     return rslt_img
+
+if __name__ == "__main__":
+    theta_file = open("theta.txt", "r")
+    dist_file = open("dist.txt", "r")
+
+    theta = [float(line.strip()) for line in theta_file.readlines()]
+    dist = [float(line.strip()) for line in dist_file.readlines()]

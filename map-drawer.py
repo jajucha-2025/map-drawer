@@ -3,13 +3,29 @@ import numpy as np
 import cv2
 import os
 
-rslt_img_x = 250
-rslt_img_y = 250
+# -------------------------------
+# ∴∵∴∵∴∵∴∵∴∵∴|↖∵∴∵∴∵∴∵∴∵∴∵∴∵∴∵∴
+# ∴∵∴∵∴∵∴∵∴∵∴|∴∵↖∵∴∵∴∵∴∵∴∵∴∵∴∵∴
+# ∴∵∴∵∴∵∴∵∴∵∴|∴∵∴∵↖∵∴∵∴∵∴∵∴∵∴∵∴
+# ∴∵∴∵∴∵∴∵∴∵∴|400∵∴∵↖∵∴∵_∵∴┌-┐∴
+# ∴∵∴∵∴∵∴∵∴∵∴|∴∵∴∵∴∵↙∵∴|└┐┌┘-└┐
+# ∴∵∴∵∴∵∴∵∴∵∴|∴∵∴∵↙∵∴/10.3￣7￣
+# ∴∵∴∵∴∵∴∵∴∵∴|∴∵↙∵∴∵/￣\_______
+# ∴∵∴∵∴∵∴∵∴∵∴|↙∵∴18∵\__/∵∴∵∴∵∴∵
+# -------------------------------
 
-line_range = 200
-line_width = 200
+cam2lidar_len = 6.8 # cm
+cam_h = 10.3 # cm
+cam_angle_view_v = 120 # degree
+cam_image_zero = 18 # cm
+
+line_range = 400 # mm
+line_width = 200 # mm
+
+rslt_img_size = 400
 
 lidar_color = (0, 255, 0)
+lidar_jajucha_color = (0, 0, 255)
 line_color = (255, 0, 0)
 
 # simple math
@@ -30,18 +46,30 @@ def draw_lidar(theta, dist):
     x = dist * np.cos(theta_rad)
     y = dist * np.sin(theta_rad)
     
-    img_size = 400
     max_dist = 5000
 
-    scale = (img_size / 2) / max_dist
+    scale = (rslt_img_size / 2) / max_dist
 
-    ix = (x * scale + img_size / 2).astype(np.int32)
-    iy = (y * scale + img_size / 2).astype(np.int32)
+    ix = (x * scale + rslt_img_size / 2).astype(np.int32)
+    iy = (y * scale + rslt_img_size / 2).astype(np.int32)
 
-    img = np.zeros((img_size, img_size, 3), dtype=np.uint8)
+    img = np.zeros((rslt_img_size, rslt_img_size, 3), dtype=np.uint8)
+
+    show_jajucha = False
+    if show_jajucha:
+        triangle_radius = 10
+        center_x, center_y = rslt_img_size // 2, rslt_img_size // 2
+
+        triangle_pts = np.array([[
+            (center_x + triangle_radius, center_y),  # 오른쪽
+            (center_x - triangle_radius, center_y - triangle_radius),  # 왼쪽 위
+            (center_x - triangle_radius, center_y + triangle_radius)   # 왼쪽 아래
+        ]], dtype=np.int32)
+
+        cv2.fillPoly(img, triangle_pts, color=lidar_jajucha_color)  
 
     for nx, ny in zip(ix, iy):
-        if (ix >= 0) and (ix < img_size) and (iy >= 0) and (iy < img_size):
+        if (ix >= 0) and (ix < rslt_img_size) and (iy >= 0) and (iy < rslt_img_size):
             cv2.circle(img, (nx, ny), radius=2, color=lidar_color, thickness=-1)
 
     img = cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
@@ -84,19 +112,12 @@ def draw_map(img, theta, d):
     cannyed_img = draw_canny(img)
     cannyed_img = cv2.resize(cannyed_img, (cannyed_img.shape[1]/2, cannyed_img.shape[0]/2))
 
-    roi = lidar_img[0:cannyed_img.shape[0], rslt_img_x//2 - cannyed_img.shape[1]//2:rslt_img_x//2 + cannyed_img.shape[1]//2]
+    roi = lidar_img[0:cannyed_img.shape[0], rslt_img_size//2 - cannyed_img.shape[1]//2:rslt_img_size//2 + cannyed_img.shape[1]//2]
     roi[np.where((cannyed_img != [0, 0, 0]).all(axis=2))] = cannyed_img[np.where((cannyed_img != [0, 0, 0]).all(axis=2))]
 
-    lidar_img[0:cannyed_img.shape[0], rslt_img_x//2 - cannyed_img.shape[1]//2:rslt_img_x//2 + cannyed_img.shape[1]//2] = roi
-    full_img = lidar_img
+    lidar_img[0:cannyed_img.shape[0], rslt_img_size//2 - cannyed_img.shape[1]//2:rslt_img_size//2 + cannyed_img.shape[1]//2] = roi
+    rslt_img = lidar_img
     
-    rslt_img = full_img[0:300, 0:400]
+    # rslt_img = full_img[0:300, 0:400]
 
     return rslt_img
-
-if __name__ == "__main__":
-    theta_file = open("theta.txt", "r")
-    dist_file = open("dist.txt", "r")
-
-    theta = [float(line.strip()) for line in theta_file.readlines()]
-    dist = [float(line.strip()) for line in dist_file.readlines()]

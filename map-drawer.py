@@ -16,13 +16,24 @@ import os
 
 cam2lidar_len = 6.8 # cm
 cam_h = 10.3 # cm
-cam_angle_view_v = 120 # degree
 cam_image_zero = 18 # cm
 
-line_range = 400 # mm
-line_width = 200 # mm
+cam_angle_view_v = 120 # degree
 
-rslt_img_size = 400
+const_ld_cm = 0.1 # 1 ld = 0.1 cm
+
+cam2lidar_len_ld = cam2lidar_len / const_ld_cm # ld
+cam_h_ld =  cam_h / const_ld_cm # ld
+cam_image_zero_ld = cam_image_zero / const_ld_cm # ld
+
+line_range = 400 # ld
+line_width = 400 # ld
+
+lidar_max_range = 400 # ld
+
+rslt_img_size = 400 # px
+
+scale = rslt_img_size / (lidar_max_range * 2)
 
 lidar_color = (0, 255, 0)
 lidar_jajucha_color = (0, 0, 255)
@@ -46,9 +57,7 @@ def draw_lidar(theta, dist):
     x = dist * np.cos(theta_rad)
     y = dist * np.sin(theta_rad)
     
-    max_dist = 5000
-
-    scale = (rslt_img_size / 2) / max_dist
+    # max_dist = 5000
 
     ix = (x * scale + rslt_img_size / 2).astype(np.int32)
     iy = (y * scale + rslt_img_size / 2).astype(np.int32)
@@ -78,18 +87,22 @@ def draw_lidar(theta, dist):
 
 def draw_canny(img):
     # img : numpy array - cannyed image
-    w = img.shape[1]
-    h = img.shape[0]
+    canny_w = img.shape[1]
+    canny_h = img.shape[0]
+
+    srcroi_h = int(canny_h * 2 / (line_range - cam2lidar_len_ld) * (line_range - cam_image_zero_ld - cam2lidar_len_ld))
+    canny_w_ld = cam_image_zero_ld * math.tan(math.radians(cam_angle_view_v / 2)) * 2
+    srcroi_w_half = int(canny_w * (line_width / canny_w_ld) / 2)
 
     src_points = np.float32([
-        [180, 280],  # 좌측 상단
-        [460, 280],  # 우측 상단
-        [800, 400], # 우측 하단
-        [-160, 400]  # 좌측 하단
-    ]) # 수정 필요
+        [canny_w // 2 - srcroi_w_half * (canny_h - srcroi_h * 2) / canny_h, canny_h - srcroi_h], 
+        [canny_w // 2 + srcroi_w_half * (canny_h - srcroi_h * 2) / canny_h, canny_h - srcroi_h], 
+        [canny_w // 2 + srcroi_w_half, canny_h], 
+        [canny_w // 2 - srcroi_w_half, canny_h] 
+    ]) 
 
-    dst_w = line_width
-    dst_h = int(rslt_img_y // 2 - line_range)  
+    dst_w = line_width * scale
+    dst_h = (line_range - cam_image_zero_ld - cam2lidar_len_ld) * scale
 
     dst_points = np.float32([
         [0, 0],

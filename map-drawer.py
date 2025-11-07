@@ -123,14 +123,13 @@ def draw_canny(img):
 def draw_map(img, theta, d):
     lidar_img = draw_lidar(theta, d)
     cannyed_img = draw_canny(img)
-    cannyed_img = cv2.resize(cannyed_img, (cannyed_img.shape[1]/2, cannyed_img.shape[0]/2))
 
+    # 수정 확인 - 위치
     roi = lidar_img[0:cannyed_img.shape[0], rslt_img_size//2 - cannyed_img.shape[1]//2:rslt_img_size//2 + cannyed_img.shape[1]//2]
     roi[np.where((cannyed_img != [0, 0, 0]).all(axis=2))] = cannyed_img[np.where((cannyed_img != [0, 0, 0]).all(axis=2))]
+    # roi = cv2.addWeighted(roi, 1, cannyed_img, 1, 0)
 
-    lidar_img[0:cannyed_img.shape[0], rslt_img_size//2 - cannyed_img.shape[1]//2:rslt_img_size//2 + cannyed_img.shape[1]//2] = roi
-    rslt_img = lidar_img
-    
-    # rslt_img = full_img[0:300, 0:400]
+    rslt_img = lidar_img.copy()
+    rslt_img[0:roi.shape[0], rslt_img.shape[1]//2 - roi.shape[1]//2:rslt_img.shape[1]//2 + roi.shape[1]//2] = roi
 
     return rslt_img

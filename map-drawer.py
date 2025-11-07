@@ -22,6 +22,12 @@ def polar_to_cartesian(r, theta):
     y = r * math.sin(theta)
     return x, y
 
+def rad2degree(angle):
+    return angle / math.pi * 180
+
+def degree2rad(angle):
+    return angle / 180 * math.pi
+
 # draw utils
 def draw_lidar(theta, d):
     img = np.zeros((rslt_img_x, rslt_img_y, 3), dtype=np.uint8)
@@ -29,10 +35,10 @@ def draw_lidar(theta, d):
     center_y = rslt_img_y // 2
 
     for i in range(len(theta)):
-        x, y = polar_to_cartesian(d[i], theta[i])
+        x, y = polar_to_cartesian(d[i], degree2rad(theta[i]))
 
-        px = int(center_x + x[i])
-        py = int(center_y - y[i])  # Invert y-axis for image coordinates
+        px = int(center_x + x)
+        py = int(center_y - y)  # Invert y-axis for image coordinates
         if 0 <= px < rslt_img_x and 0 <= py < rslt_img_y:
             img = cv2.circle(img, (px, py), 1, lidar_color, -1)
     
